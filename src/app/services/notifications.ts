@@ -39,10 +39,10 @@ export class NotificationService {
     medications.forEach(med => {
       const [hourStr, minuteStr] = med.time.split(' ')[0].split(':');
       const period = med.time.split(' ')[1];
-      
+
       let hour = parseInt(hourStr);
       const minute = parseInt(minuteStr || '0');
-      
+
       // Convert to 24-hour format
       if (period === 'PM' && hour !== 12) hour += 12;
       if (period === 'AM' && hour === 12) hour = 0;
@@ -112,21 +112,7 @@ export class NotificationService {
       body: `${description}: ${medication.name} (${medication.dosage})`,
       icon: '/favicon.ico',
       tag: medication.id,
-      requireInteraction: true,
-      actions: [
-        {
-          action: 'taken',
-          title: '✓ Taken'
-        },
-        {
-          action: 'remind',
-          title: '⏰ Remind Later'
-        },
-        {
-          action: 'skip',
-          title: '✗ Skip Today'
-        }
-      ]
+      requireInteraction: true
     });
 
     // Handle notification actions
@@ -237,7 +223,7 @@ export class NotificationService {
   private createCaregiverMessage(action: string, medication: TodayMedication): string {
     const userName = 'User'; // In real app, this would be the actual user's name
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
+
     switch (action) {
       case 'taken':
         return `${userName} took ${medication.name} at ${time}`;
@@ -300,6 +286,38 @@ export class NotificationService {
 
   isEnabled(): boolean {
     return this.notificationsEnabled;
+  }
+
+  /**
+   * Send an immediate reminder from a caregiver to a family member
+   * This bypasses the scheduled notification system and sends immediately
+   */
+  sendCaregiverReminder(options: {
+    familyMemberName: string;
+    medication?: string;
+    customMessage?: string;
+  }): void {
+    if (!this.notificationsEnabled) {
+      console.warn('Notifications not enabled');
+      return;
+    }
+
+    const message = options.customMessage ||
+      `Time to take ${options.medication || 'your medications'}!`;
+
+    // Create mock medication for existing notification system
+    const mockMedication: TodayMedication = {
+      id: `caregiver-reminder-${Date.now()}`,
+      medicineId: 'general',
+      name: options.medication || 'Medication Reminder',
+      dosage: `From: ${options.familyMemberName}`,
+      time: 'Now',
+      taken: false,
+      hour: new Date().getHours(),
+      description: message
+    };
+
+    this.showNotification(mockMedication);
   }
 }
 

@@ -63,6 +63,7 @@ export interface Appointment {
   location?: string;
   doctor?: string;
   description?: string;
+  forProfile?: string; // 'self', 'mom', 'dad', etc.
 }
 
 interface Settings {
@@ -126,7 +127,7 @@ function App() {
   useEffect(() => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const today = days[new Date().getDay()];
-    
+
     const derived = currentPrescription
       .filter(med => med.schedule?.includes(today))
       .map(med => ({
@@ -138,7 +139,7 @@ function App() {
         taken: false,
         hour: 8,
       }));
-    
+
     // Only update if current list is empty (prevents overwriting 'taken' status during a session)
     if (todayMedications.length === 0 && derived.length > 0) {
       setTodayMedications(derived);
@@ -165,14 +166,14 @@ function App() {
   const handleMarkTaken = (id: string) => {
     // Find the medication before filtering
     const todayMed = todayMedications.find(m => m.id === id);
-    
+
     // Remove from today's list
     setTodayMedications(prev => {
       const filtered = prev.filter(med => med.id !== id);
       storage.updateTodayMedications(filtered);
       return filtered;
     });
-    
+
     // Update stock logic
     if (todayMed) {
       setCurrentPrescription(prev => {
@@ -261,13 +262,13 @@ function App() {
     // Update today's list if applicable
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const today = daysOfWeek[new Date().getDay()];
-    
+
     if (days.includes(today)) {
       setTodayMedications(prev => {
         const ampm = hour >= 12 ? 'PM' : 'AM';
         const hour12 = hour % 12 || 12;
         const timeStr = `${hour12}:00 ${ampm}`;
-        
+
         const exists = prev.find(m => m.medicineId === id);
         let updated;
         if (exists) {
@@ -330,7 +331,7 @@ function App() {
   useEffect(() => {
     const handleNotificationAction = (event: CustomEvent) => {
       const { action, medication, caregiverUpdate } = event.detail;
-      
+
       if (action === 'taken') {
         handleMarkTaken(medication.id);
         // Show forest growth animation or other feedback
@@ -338,8 +339,8 @@ function App() {
       } else if (action === 'skip') {
         // Log for caregiver to see
         storage.addAdherenceRecord(
-          new Date().toISOString().split('T')[0], 
-          todayMedications.filter(m => m.taken).length, 
+          new Date().toISOString().split('T')[0],
+          todayMedications.filter(m => m.taken).length,
           todayMedications.length + 1
         );
         toast.info('Medication skipped for today');
@@ -358,7 +359,7 @@ function App() {
 
     window.addEventListener('medicationNotificationAction', handleNotificationAction as EventListener);
     window.addEventListener('showForestGrowth', handleForestGrowth);
-    
+
     return () => {
       window.removeEventListener('medicationNotificationAction', handleNotificationAction as EventListener);
       window.removeEventListener('showForestGrowth', handleForestGrowth);
@@ -407,11 +408,11 @@ function App() {
   return (
     <div className="min-h-screen bg-neutral-50" style={{ fontSize: `${appSettings.fontSize}px` }}>
       <Toaster position="top-center" richColors />
-      
+
       {/* Forest Growth Animation */}
-      <ForestGrowthAnimation 
-        isVisible={showForestGrowth} 
-        onComplete={() => setShowForestGrowth(false)} 
+      <ForestGrowthAnimation
+        isVisible={showForestGrowth}
+        onComplete={() => setShowForestGrowth(false)}
       />
 
       <AnimatePresence mode="wait">
@@ -445,11 +446,11 @@ function App() {
           <motion.div key="timetable" initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}>
             <TimeTableScreen
               onBack={() => setCurrentScreen('home')}
-              medications={currentPrescription.map(m => ({ 
-                id: m.id, 
-                name: m.name, 
-                dosage: m.dosage, 
-                time: '08:00 AM', 
+              medications={currentPrescription.map(m => ({
+                id: m.id,
+                name: m.name,
+                dosage: m.dosage,
+                time: '08:00 AM',
                 hour: 8,
                 schedule: m.schedule || []
               }))}
@@ -482,7 +483,7 @@ function App() {
             <MyCareGiverScreen
               onBack={() => setCurrentScreen('home')}
               caregivers={caregivers}
-              onAddCaregiver={(email) => {}}
+              onAddCaregiver={(email) => { }}
             />
           </motion.div>
         )}
@@ -492,6 +493,8 @@ function App() {
             <CareGiverHub
               onBack={() => setCurrentScreen('home')}
               onNavigate={handleNavigate}
+              onAddAppointment={handleAddEvent}
+              currentUser={userData.name || 'User'}
             />
           </motion.div>
         )}
@@ -525,7 +528,7 @@ function App() {
           <motion.div key="caregiver-permission" initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}>
             <CareGiverPermissionScreen
               onBack={() => setCurrentScreen('home')}
-              onInvite={() => {}}
+              onInvite={() => { }}
             />
           </motion.div>
         )}
