@@ -27,9 +27,10 @@ import { SettingsScreen } from '@/app/components/SettingsScreen';
 import { RevokeAccessScreen } from '@/app/components/RevokeAccessScreen';
 import { HelpCenterScreen } from '@/app/components/HelpCenterScreen';
 import { ContactSupportScreen } from '@/app/components/ContactSupportScreen';
+import { UserProfile } from '@/app/components/UserProfile';
 
 type OnboardingStep = 'welcome' | 'privacy' | 'success' | 'complete';
-type Screen = 'home' | 'prescription' | 'timetable' | 'appointments' | 'pharmacist' | 'caregivers' | 'analyticals' | 'caregiver-permission' | 'settings' | 'revoke-access' | 'help-center' | 'contact-support' | 'caregiver-hub' | 'family-member-view';
+type Screen = 'home' | 'prescription' | 'timetable' | 'appointments' | 'pharmacist' | 'caregivers' | 'analyticals' | 'caregiver-permission' | 'settings' | 'revoke-access' | 'help-center' | 'contact-support' | 'caregiver-hub' | 'family-member-view' | 'profile';
 
 
 
@@ -68,6 +69,7 @@ export interface Appointment {
 
 interface Settings {
   fontSize: number;
+  theme: 'light' | 'dark' | 'auto';
 }
 
 function App() {
@@ -79,7 +81,7 @@ function App() {
     timeCheck: true, // Replaced location with time check
   });
   const [userData, setUserData] = useState({ name: '', profilePic: null as string | null });
-  const [appSettings, setAppSettings] = useState<Settings>({ fontSize: 16 });
+  const [appSettings, setAppSettings] = useState<Settings>({ fontSize: 16, theme: 'light' });
   const [selectedFamilyMember, setSelectedFamilyMember] = useState<FamilyMember | null>(null);
   const [showForestGrowth, setShowForestGrowth] = useState(false);
   const [caregiverUpdates, setCaregiverUpdates] = useState<any[]>([]);
@@ -100,6 +102,33 @@ function App() {
     // Initialize notifications
     notificationService.requestPermission();
   }, []);
+
+  // Theme handling effect
+  useEffect(() => {
+    const root = document.documentElement;
+    const theme = appSettings.theme;
+
+    const applyTheme = (isDark: boolean) => {
+      if (isDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    };
+
+    if (theme === 'dark') {
+      applyTheme(true);
+    } else if (theme === 'light') {
+      applyTheme(false);
+    } else if (theme === 'auto') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      applyTheme(mediaQuery.matches);
+
+      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [appSettings.theme]);
 
   // Current prescription data - loaded from storage or empty
   const [currentPrescription, setCurrentPrescription] = useState<Medicine[]>([]);
@@ -407,7 +436,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50" style={{ fontSize: `${appSettings.fontSize}px` }}>
+    <div className="min-h-screen bg-background" style={{ fontSize: `${appSettings.fontSize}px` }}>
       <Toaster position="top-center" richColors />
 
       {/* Forest Growth Animation */}
@@ -563,6 +592,15 @@ function App() {
         {currentScreen === 'contact-support' && (
           <motion.div key="contact-support" initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}>
             <ContactSupportScreen onBack={() => setCurrentScreen('home')} />
+          </motion.div>
+        )}
+
+        {currentScreen === 'profile' && (
+          <motion.div key="profile" initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}>
+            <UserProfile
+              onBack={() => setCurrentScreen('home')}
+              currentUser={userData.name || 'User'}
+            />
           </motion.div>
         )}
       </AnimatePresence>

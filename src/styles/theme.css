@@ -1,4 +1,4 @@
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   /* CareFlow Color Tokens */
@@ -199,11 +199,78 @@
   --color-input-background: var(--input-background);
   --color-switch-background: var(--switch-background);
   --color-ring: var(--ring);
-  
+
+  /* Dark Mode Overrides */
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
+}
+
+.dark {
+  /* Dark Mode Semantic Tokens */
+  --color-background: #111827;
+  /* Gray 900 */
+  --color-foreground: var(--neutral-50);
+  --color-card: #1F2937;
+  /* Gray 800 */
+  --color-card-foreground: var(--neutral-50);
+  --color-popover: #1F2937;
+  --color-popover-foreground: var(--neutral-50);
+
+  --color-primary: #5A8168;
+  /* Healing Sage 600 - slightly darker implementation but lighter perception on dark */
+  --color-primary-foreground: var(--neutral-white);
+
+  --color-secondary: #4B5563;
+  /* Gray 600 */
+  --color-secondary-foreground: var(--neutral-white);
+
+  --color-muted: #374151;
+  /* Gray 700 */
+  --color-muted-foreground: var(--neutral-400);
+
+  --color-accent: #2D3E3E;
+  /* Neutral 700 */
+  --color-accent-foreground: var(--healing-sage-100);
+
+  --color-destructive: #991B1B;
+  /* Red 800 */
+  --color-destructive-foreground: var(--neutral-white);
+
+  --color-border: #374151;
+  /* Gray 700 */
+  --color-input: #374151;
+  --color-input-background: #1F2937;
+  --color-switch-background: #4B5563;
+  /* Semantic Colors - Dark Overrides */
+  --color-success-light: #064E3B;
+  /* Emerald 900 */
+  --color-success-main: #34D399;
+  /* Emerald 400 */
+  --color-success-dark: #065F46;
+  /* Emerald 800 */
+
+  --color-warning-light: #451a03;
+  /* Amber 950/Brown */
+  --color-warning-main: #fbbf24;
+  /* Amber 400 */
+  --color-warning-dark: #b45309;
+  /* Amber 700 */
+
+  --color-error-light: #450a0a;
+  /* Red 950 */
+  --color-error-main: #f87171;
+  /* Red 400 */
+  --color-error-dark: #991b1b;
+  /* Red 800 */
+
+  --color-info-light: #0c4a6e;
+  /* Sky 900 */
+  --color-info-main: #38bdf8;
+  /* Sky 400 */
+  --color-info-dark: #075985;
+  /* Sky 800 */
 }
 
 @layer base {
@@ -216,8 +283,13 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-secondary;
   }
 
