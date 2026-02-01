@@ -694,7 +694,7 @@ export function CareGiverHub({ onBack, onNavigate, onAddAppointment, currentUser
                     disabled={schedulingVisit}
                   >
                     <option value="self">Myself ({currentUser})</option>
-                    {familyMembers.map(member => (
+                    {familyMembers.filter(member => member.id !== 'self').map(member => (
                       <option key={member.id} value={member.id}>
                         {member.name} ({member.relationship})
                       </option>
@@ -870,7 +870,7 @@ export function CareGiverHub({ onBack, onNavigate, onAddAppointment, currentUser
                     disabled={submittingRefill}
                   >
                     <option value="self">Myself ({currentUser})</option>
-                    {familyMembers.map(member => (
+                    {familyMembers.filter(member => member.id !== 'self').map(member => (
                       <option key={member.id} value={member.id}>
                         {member.name} ({member.relationship})
                       </option>
@@ -1068,7 +1068,7 @@ export function CareGiverHub({ onBack, onNavigate, onAddAppointment, currentUser
                     className="w-full px-4 py-3 bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-xl text-white font-medium focus:outline-none focus:border-white/50"
                   >
                     <option value="self" className="text-neutral-800">My Reports</option>
-                    {familyMembers.map(member => (
+                    {familyMembers.filter(member => member.id !== 'self').map(member => (
                       <option key={member.id} value={member.id} className="text-neutral-800">
                         {member.name}'s Reports
                       </option>
