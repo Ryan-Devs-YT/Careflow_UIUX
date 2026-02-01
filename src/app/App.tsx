@@ -204,6 +204,7 @@ function App() {
     if (section === 'family-member-view' && memberId) {
       // Find the family member
       const members = [
+        { id: 'self', name: userData.name || 'User', relationship: 'self' as const, avatar: '👤', adherenceRate: 92, prescriptionIds: [], notifications: true },
         { id: 'mom', name: 'Mom', relationship: 'mom' as const, avatar: '👩', adherenceRate: 85, prescriptionIds: [], notifications: true },
         { id: 'dad', name: 'Dad', relationship: 'dad' as const, avatar: '👨', adherenceRate: 92, prescriptionIds: [], notifications: true }
       ];
