@@ -1,7 +1,7 @@
 export interface FamilyMember {
   id: string;
   name: string;
-  relationship: 'mom' | 'dad' | 'spouse' | 'child' | 'sibling' | 'other';
+  relationship: 'self' | 'mom' | 'dad' | 'spouse' | 'child' | 'sibling' | 'other';
   avatar: string;
   adherenceRate: number;
   lastMedicationTaken?: string;

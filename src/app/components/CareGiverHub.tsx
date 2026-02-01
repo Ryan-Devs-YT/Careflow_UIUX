@@ -126,6 +126,22 @@ export function CareGiverHub({ onBack, onNavigate, onAddAppointment, currentUser
 
   // Simulate current updates (in real app, this would come from backend)
   useEffect(() => {
+    // Add user's own profile to the beginning of family members list
+    const userProfile: FamilyMember = {
+      id: 'self',
+      name: currentUser,
+      relationship: 'self',
+      avatar: '👤',
+      adherenceRate: 92,
+      lastMedicationTaken: '2 hours ago - Aspirin',
+      weatherLocation: 'Current Location',
+      prescriptionIds: ['med5', 'med6'],
+      notifications: true
+    };
+
+    // Prepend user profile to family members
+    setFamilyMembers([userProfile, ...DEFAULT_FAMILY_MEMBERS]);
+
     const mockUpdates: CareUpdate[] = [
       {
         id: '1',
@@ -145,7 +161,7 @@ export function CareGiverHub({ onBack, onNavigate, onAddAppointment, currentUser
       }
     ];
     setCurrentUpdates(mockUpdates);
-  }, []);
+  }, [currentUser]);
 
   const getWeatherIcon = (condition: string) => {
     switch (condition) {
@@ -315,6 +331,7 @@ export function CareGiverHub({ onBack, onNavigate, onAddAppointment, currentUser
 
   const getRelationshipColor = (relationship: string) => {
     switch (relationship) {
+      case 'self': return 'bg-healing-sage-100 text-healing-sage-700';
       case 'mom': return 'bg-pink-100 text-pink-700';
       case 'dad': return 'bg-blue-100 text-blue-700';
       case 'spouse': return 'bg-purple-100 text-purple-700';
