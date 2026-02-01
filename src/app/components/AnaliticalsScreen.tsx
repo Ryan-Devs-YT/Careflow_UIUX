@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { ArrowLeft, TrendingUp, Calendar, Trees } from 'lucide-react';
 import { motion } from 'motion/react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Forest } from './ui/TreeIcon';
+import { storage } from '@/app/utils/storage';
 
 interface MedicationAdherence {
   name: string;
@@ -25,16 +27,27 @@ export function AnaliticalsScreen({
 }: AnaliticalsScreenProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('week');
 
-  // Mock data for adherence over time
-  const weeklyData = [
-    { day: 'Mon', adherence: 95 },
-    { day: 'Tue', adherence: 100 },
-    { day: 'Wed', adherence: 90 },
-    { day: 'Thu', adherence: 100 },
-    { day: 'Fri', adherence: 85 },
-    { day: 'Sat', adherence: 100 },
-    { day: 'Sun', adherence: 95 },
-  ];
+  // Load adherence history from storage
+  const [adherenceHistory] = useState(() => {
+    const data = storage.get();
+    return data?.adherenceHistory || [];
+  });
+
+  // Mock data for adherence over time - enhanced with real data
+  const weeklyData = adherenceHistory.slice(0, 7).reverse().map((record, index) => ({
+    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][new Date(record.date).getDay()] || `Day ${index + 1}`,
+    adherence: Math.round((record.taken / record.total) * 100)
+  })).concat(
+    adherenceHistory.length === 0 ? [
+      { day: 'Mon', adherence: 95 },
+      { day: 'Tue', adherence: 100 },
+      { day: 'Wed', adherence: 90 },
+      { day: 'Thu', adherence: 100 },
+      { day: 'Fri', adherence: 85 },
+      { day: 'Sat', adherence: 100 },
+      { day: 'Sun', adherence: 95 },
+    ] : []
+  );
 
   const monthlyData = [
     { week: 'Week 1', adherence: 92 },
@@ -54,7 +67,7 @@ export function AnaliticalsScreen({
 
   const getChartData = () => {
     switch (selectedPeriod) {
-      case 'week': return weeklyData;
+      case 'week': return weeklyData.slice(-7);
       case 'month': return monthlyData;
       case 'year': return yearlyData;
     }
@@ -64,86 +77,68 @@ export function AnaliticalsScreen({
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-24">
-      {/* Header */}
-      <div className="bg-healing-sage-500 text-white p-6 sticky top-0 z-10 shadow-md">
+      {/* Header - Fixed z-index and proper spacing */}
+      <div className="bg-healing-sage-500 text-white p-6 sticky top-0 z-50 shadow-md">
         <button onClick={onBack} className="flex items-center gap-2 mb-4">
           <ArrowLeft className="w-6 h-6" />
           <span className="text-lg">Back</span>
         </button>
-        <h1 className="text-3xl font-bold">Analyticals</h1>
-        <p className="text-healing-sage-100">Your health progress</p>
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-1">Analytics</h1>
+          <p className="text-healing-sage-100">Your health progress</p>
+        </div>
       </div>
 
       <div className="p-6 space-y-6">
-        {/* Personal Forest (Moved to Top as requested implicitly by importance) */}
+        {/* Personal Forest - Enhanced with better forest visualization */}
         <section>
           <div className="bg-gradient-to-b from-healing-sage-100 to-healing-sage-50 rounded-2xl shadow-md p-6">
             <div className="flex items-center gap-3 mb-4">
               <Trees className="w-8 h-8 text-healing-sage-600" />
               <div>
                 <h2 className="text-2xl font-bold text-neutral-700">Your Health Forest</h2>
-                <p className="text-neutral-600">Each tree represents a prescription. Keep them green!</p>
+                <p className="text-neutral-600">High adherence = Lush green forest 🌲</p>
               </div>
             </div>
 
-            {/* Forest visualization */}
-            <div className="bg-white rounded-xl p-6 mb-4 min-h-[200px] relative overflow-hidden flex items-end justify-center">
-              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-healing-sage-200 to-transparent pointer-events-none" />
+            {/* Enhanced Forest Visualization */}
+            <div className="bg-white rounded-xl p-6 mb-4 min-h-[250px] relative overflow-hidden">
+              {/* Ground gradient */}
+              <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-green-100 via-green-50 to-transparent pointer-events-none" />
               
-              <div className="flex items-end justify-center gap-6 md:gap-8 flex-wrap z-10">
-                {medicationAdherence.map((med, index) => {
-                  // Logic: < 60% = Pale/Dead, 60-90% = Yellow/Weak, > 90% = Green/Strong
-                  let treeColor = 'text-healing-sage-600'; // Green
-                  let trunkColor = 'bg-warm-comfort-700';
-                  let opacity = 1;
-                  let scale = 1;
-
-                  if (med.adherence < 60) {
-                      treeColor = 'text-neutral-400'; // Gray
-                      trunkColor = 'bg-neutral-400';
-                      opacity = 0.6;
-                      scale = 0.9;
-                  } else if (med.adherence < 90) {
-                      treeColor = 'text-warm-comfort-400'; // Yellow/Orange
-                      scale = 0.95;
-                  }
-
-                  return (
-                    <motion.div
-                      key={med.name}
-                      initial={{ scale: 0, y: 20 }}
-                      animate={{ scale: scale, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex flex-col items-center group relative"
-                    >
-                        {/* Tooltip */}
-                        <div className="absolute -top-10 bg-black/70 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                            {med.name}: {med.adherence}%
-                        </div>
-
-                      {/* Tree Icon */}
-                      <div className={`text-6xl ${treeColor} transition-colors duration-500`} style={{ opacity }}>
-                        {index % 2 === 0 ? '🌳' : '🌲'}
-                      </div>
-                      
-                      {/* Label */}
-                      <p className="text-xs font-medium text-neutral-600 mt-2 max-w-[80px] text-center truncate">{med.name}</p>
-                    </motion.div>
-                  );
-                })}
-
-                {medicationAdherence.length === 0 && (
-                  <p className="text-neutral-500 text-center">
-                    No active prescriptions to track.
+              {/* Forest container */}
+              <div className="relative z-10">
+                <Forest 
+                  trees={medicationAdherence.length > 0 ? medicationAdherence : [
+                    { name: 'Sample', adherence: adherenceRate }
+                  ]} 
+                  className="py-4"
+                />
+                
+                {/* Forest density indicator */}
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-neutral-600">
+                    <span className="font-semibold">Forest Density:</span>{' '}
+                    <span className={`font-bold ${
+                      medicationAdherence.length >= 5 ? 'text-green-600' :
+                      medicationAdherence.length >= 3 ? 'text-yellow-600' :
+                      'text-gray-500'
+                    }`}>
+                      {medicationAdherence.length >= 5 ? 'Dense 🌳🌳🌳' :
+                       medicationAdherence.length >= 3 ? 'Growing 🌳🌳' :
+                       'Just starting 🌱'}
+                    </span>
                   </p>
-                )}
+                </div>
               </div>
             </div>
 
             <div className="mt-4 p-4 bg-white rounded-xl">
               <p className="text-sm text-neutral-600 text-center">
-                <span className="font-medium text-healing-sage-700">Emotional Weight:</span> 
-                If you neglect your meds, your forest fades. Take care of yourself to keep your forest thriving! 🌱
+                <span className="font-medium text-healing-sage-700">Your Forest Grows With Adherence!</span>{' '}
+                {adherenceRate >= 90 ? 'Excellent work! Your forest is thriving! 🌲' :
+                 adherenceRate >= 70 ? 'Good progress! Keep taking your medications! 🌳' :
+                 'Your forest needs care. Stay consistent! 🌱'}
               </p>
             </div>
           </div>
@@ -158,10 +153,10 @@ export function AnaliticalsScreen({
           >
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-5 h-5 text-healing-sage-600" />
-              <h3 className="font-semibold text-neutral-600">Adherence Rate</h3>
+              <h3 className="font-semibold text-neutral-600">Adherence</h3>
             </div>
             <p className="text-3xl font-bold text-healing-sage-600">{adherenceRate}%</p>
-            <p className="text-sm text-neutral-500 mt-1">Total Average</p>
+            <p className="text-sm text-neutral-500 mt-1">Overall rate</p>
           </motion.div>
 
           <motion.div
@@ -172,7 +167,7 @@ export function AnaliticalsScreen({
           >
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-5 h-5 text-error-main" />
-              <h3 className="font-semibold text-neutral-600">Missed Doses</h3>
+              <h3 className="font-semibold text-neutral-600">Missed</h3>
             </div>
             <p className="text-3xl font-bold text-error-main">{missedDoses}</p>
             <p className="text-sm text-neutral-500 mt-1">This month</p>

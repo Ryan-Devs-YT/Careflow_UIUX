@@ -1,44 +1,64 @@
 import { useState } from 'react';
-import { ArrowLeft, Calendar as CalendarIcon, Clock, MapPin, User, ChevronLeft, ChevronRight, Check, AlertCircle, X } from 'lucide-react';
-import { motion } from 'motion/react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Check, AlertCircle, X, Plus, Calendar as CalendarIcon, Clock, Edit2, Pill, Stethoscope, TestTube, Calendar } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 
 interface Appointment {
   id: string;
-  type: 'doctor' | 'refill' | 'test';
+  type: 'doctor' | 'refill' | 'test' | 'custom';
   title: string;
   date: Date;
   time: string;
   location?: string;
   doctor?: string;
+  description?: string;
 }
 
 interface AppointmentsScreenProps {
   onBack: () => void;
   appointments: Appointment[];
+  onAddEvent: (event: Appointment) => void;
 }
 
-// Mock Adherence History for Gamification
-const MOCK_HISTORY: { [dateStr: string]: 'full' | 'partial' | 'missed' } = {
-  '2026-02-01': 'full',
-  '2026-01-31': 'full',
-  '2026-01-30': 'partial',
-  '2026-01-29': 'full',
-  '2026-01-28': 'missed',
-  '2026-01-27': 'full',
-  '2026-01-26': 'full',
-  '2026-01-25': 'partial',
-  // ... more logic can be added or dynamically generated
-};
-
-export function AppointmentsScreen({ onBack, appointments }: AppointmentsScreenProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 1, 1)); // Feb 2026
+export function AppointmentsScreen({ onBack, appointments, onAddEvent }: AppointmentsScreenProps) {
+  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 1, 1));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newEvent, setNewEvent] = useState({ title: '', type: 'custom', time: '10:00 AM' });
+
+  const getEventIcon = (type: string) => {
+    switch (type) {
+      case 'doctor': return Stethoscope;
+      case 'refill': return Pill;
+      case 'test': return TestTube;
+      default: return Calendar;
+    }
+  };
+
+  const getEventColor = (type: string) => {
+    switch (type) {
+      case 'doctor': return 'bg-info-light text-info-dark border-info-main';
+      case 'refill': return 'bg-warning-light text-warning-dark border-warning-main';
+      case 'test': return 'bg-purple-100 text-purple-700 border-purple-300';
+      default: return 'bg-healing-sage-100 text-healing-sage-700 border-healing-sage-300';
+    }
+  };
+
+  // Get next upcoming appointment
+  const getNextUpAppointment = () => {
+    const now = new Date();
+    const futureAppointments = appointments
+      .filter(apt => apt.date >= now)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    return futureAppointments[0];
+  };
+
+  const nextUp = getNextUpAppointment();
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  // Get appointments for a specific date
   const getAppointmentsForDate = (date: Date) => {
     return appointments.filter(apt => 
       apt.date.getDate() === date.getDate() &&
@@ -47,253 +67,188 @@ export function AppointmentsScreen({ onBack, appointments }: AppointmentsScreenP
     );
   };
 
-  const getAdherenceStatus = (date: Date) => {
-      // Create simplified ISO string key YYYY-MM-DD
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const key = `${year}-${month}-${day}`;
-      
-      // Don't show status for future dates
-      if (date > new Date()) return null;
-      
-      // Use mock data or randomize for demo if not found
-      if (MOCK_HISTORY[key]) return MOCK_HISTORY[key];
-      
-      // Randomizer for unfilled past dates for demo visual
-      if (date < new Date()) {
-          const rand = Math.random();
-          if (rand > 0.8) return 'partial';
-          if (rand > 0.95) return 'missed';
-          return 'full';
-      }
-      return null;
-  };
-
-  // Get next 2 upcoming appointments
-  const upcomingAppointments = appointments
-    .filter(apt => apt.date >= new Date())
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .slice(0, 2);
-
-  const previousMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  };
-
-  const nextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'doctor': return 'bg-healing-sage-500';
-      case 'refill': return 'bg-warm-comfort-400';
-      case 'test': return 'bg-info-main';
-      default: return 'bg-neutral-400';
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'doctor': return '👨‍⚕️ Doctor Visit';
-      case 'refill': return '💊 Refill';
-      case 'test': return '🔬 Test';
-      default: return type;
-    }
+  const handleAddEvent = () => {
+    if (!selectedDate || !newEvent.title) return;
+    onAddEvent({
+      id: Date.now().toString(),
+      type: newEvent.type as any,
+      title: newEvent.title,
+      date: selectedDate,
+      time: newEvent.time,
+    });
+    setShowAddModal(false);
+    setNewEvent({ title: '', type: 'custom', time: '10:00 AM' });
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-24">
-      {/* Header */}
+    <div className="min-h-screen bg-neutral-50 pb-24 font-sans">
       <div className="bg-healing-sage-500 text-white p-6 sticky top-0 z-10 shadow-md">
         <button onClick={onBack} className="flex items-center gap-2 mb-4">
           <ArrowLeft className="w-6 h-6" />
           <span className="text-lg">Back</span>
         </button>
-        <h1 className="text-3xl font-bold">Appointments</h1>
-        <p className="text-healing-sage-100">Your upcoming events</p>
+        <h1 className="text-3xl font-bold font-secondary text-center">Calendar</h1>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Next Up Section */}
-        <section>
-          <h2 className="text-2xl font-bold text-neutral-700 mb-4">Next Up</h2>
-          <div className="space-y-3">
-            {upcomingAppointments.length > 0 ? (
-              upcomingAppointments.map((apt, index) => (
+      <div className="p-6">
+        {/* Next Up Feature */}
+        {nextUp && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-healing-sage-500 to-teal-600 text-white rounded-2xl p-6 mb-6 shadow-lg"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Next Up
+                </h3>
+                <p className="text-xl font-bold mt-1">{nextUp.title}</p>
+                <p className="text-healing-sage-100">
+                  {nextUp.date.toLocaleDateString()} at {nextUp.time}
+                </p>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                 {nextUp.type === 'doctor' ? (
+                    <Stethoscope className="w-8 h-8" />
+                  ) : nextUp.type === 'refill' ? (
+                    <Pill className="w-8 h-8" />
+                  ) : nextUp.type === 'test' ? (
+                    <TestTube className="w-8 h-8" />
+                  ) : (
+                    <Calendar className="w-8 h-8" /> // Your fallback icon
+                  )}
+                 <Calendar className="w-8 h-8" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        <div className="bg-white rounded-3xl shadow-md p-6 border border-neutral-50 mb-6 relative">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-bold text-neutral-800">{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h2>
+            <div className="flex gap-2">
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-2 bg-neutral-50 rounded-xl"><ChevronLeft className="w-5 h-5" /></button>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-2 bg-neutral-50 rounded-xl"><ChevronRight className="w-5 h-5" /></button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2 mb-4">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} className="text-center text-[10px] font-black text-neutral-300 uppercase">{day}</div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-3">
+            {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`empty-${i}`} />)}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+              const dayEvents = getAppointmentsForDate(date);
+              const isSelected = selectedDate?.getDate() === day;
+              
+              return (
+                <button 
+                  key={day} 
+                  onClick={() => setSelectedDate(date)} 
+                  className={`aspect-square rounded-2xl flex flex-col items-center justify-center relative transition-all hover:scale-105 ${
+                    isSelected ? 'bg-healing-sage-500 text-white shadow-lg scale-110 z-10' : 'hover:bg-neutral-50 text-neutral-700'
+                  }`}
+                >
+                  <span className="text-sm font-bold">{day}</span>
+                  <div className="flex gap-1 absolute bottom-1">
+                    {dayEvents.slice(0, 3).map((event, idx) => {
+                      const EventIcon = getEventIcon(event.type);
+                      return (
+                        <EventIcon 
+                          key={idx} 
+                          className={`w-2 h-2 ${
+                            event.type === 'doctor' ? 'text-info-main' :
+                            event.type === 'refill' ? 'text-warning-main' :
+                            event.type === 'test' ? 'text-purple-500' :
+                            'text-healing-sage-500'
+                          }`} 
+                        />
+                      );
+                    })}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {selectedDate && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="space-y-4 mb-20" // Added mb-20 to prevent overlay
+          >
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold text-neutral-800">Events for {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}</h3>
+              <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-healing-sage-500 text-white rounded-xl font-bold text-sm shadow-sm"><Plus className="w-4 h-4" /> Add Event</button>
+            </div>
+            
+            {getAppointmentsForDate(selectedDate).map(apt => {
+              const EventIcon = getEventIcon(apt.type);
+              return (
                 <motion.div
                   key={apt.id}
-                  className="bg-white rounded-2xl shadow-md p-5"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  className={`bg-white p-5 rounded-2xl shadow-sm border-l-4 ${getEventColor(apt.type).split(' ')[2]} flex justify-between items-center`}
                 >
-                  <div className="flex gap-4">
-                    <div className={`w-12 h-12 ${getTypeColor(apt.type)} rounded-xl flex items-center justify-center text-white font-bold flex-shrink-0`}>
-                      {apt.date.getDate()}
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-xl ${getEventColor(apt.type)}`}>
+                      <EventIcon className="w-5 h-5" />
                     </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-neutral-700">{apt.title}</h3>
-                        <span className={`px-2 py-1 ${getTypeColor(apt.type)} text-white text-xs rounded-full`}>
-                          {apt.type}
-                        </span>
+                    <div>
+                      <h4 className="font-bold text-neutral-800">{apt.title}</h4>
+                      <div className="flex items-center gap-2 text-sm text-neutral-400 mt-1">
+                        <Clock className="w-3 h-3" /> {apt.time}
                       </div>
-                      
-                      <div className="space-y-1 text-sm text-neutral-600">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          <span>{apt.date.toLocaleDateString()} • {apt.time}</span>
-                        </div>
-                        
-                        {apt.doctor && (
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
-                            <span>{apt.doctor}</span>
-                          </div>
-                        )}
-                        
-                        {apt.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
-                            <span>{apt.location}</span>
-                          </div>
-                        )}
-                      </div>
+                      {apt.location && (
+                        <p className="text-xs text-neutral-500 mt-1">{apt.location}</p>
+                      )}
                     </div>
                   </div>
+                  <div className="text-xs font-bold uppercase text-neutral-400 tracking-wider bg-neutral-50 px-2 py-1 rounded">
+                    {apt.type}
+                  </div>
                 </motion.div>
-              ))
-            ) : (
-              <div className="bg-white rounded-2xl shadow-md p-8 text-center">
-                <p className="text-neutral-500">No upcoming appointments</p>
-              </div>
+              );
+            })}
+            
+            {getAppointmentsForDate(selectedDate).length === 0 && (
+              <p className="text-center py-10 text-neutral-400 italic">No events scheduled</p>
             )}
-          </div>
-        </section>
-
-        {/* Calendar Section */}
-        <section>
-          <div className="bg-white rounded-2xl shadow-md p-6">
-            {/* Calendar Header */}
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-neutral-700">
-                {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-              </h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={previousMonth}
-                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5 text-neutral-600" />
-                </button>
-                <button
-                  onClick={nextMonth}
-                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5 text-neutral-600" />
-                </button>
-              </div>
-            </div>
-
-            {/* Day headers */}
-            <div className="grid grid-cols-7 gap-2 mb-2">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center text-sm font-medium text-neutral-500 py-2">
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Calendar grid */}
-            <div className="grid grid-cols-7 gap-2">
-              {/* Empty cells for days before month starts */}
-              {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-                <div key={`empty-${i}`} className="aspect-square" />
-              ))}
-
-              {/* Calendar days */}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-                const hasAppointments = getAppointmentsForDate(date).length > 0;
-                const adherence = getAdherenceStatus(date);
-                const isToday = 
-                  date.getDate() === new Date().getDate() &&
-                  date.getMonth() === new Date().getMonth() &&
-                  date.getFullYear() === new Date().getFullYear();
-
-                return (
-                  <button
-                    key={day}
-                    onClick={() => setSelectedDate(date)}
-                    className={`aspect-square rounded-lg flex flex-col items-center justify-center relative transition-colors ${
-                      isToday 
-                        ? 'bg-healing-sage-500 text-white font-bold ring-2 ring-healing-sage-300' 
-                        : selectedDate?.getTime() === date.getTime()
-                        ? 'bg-neutral-200'
-                        : 'hover:bg-neutral-50'
-                    }`}
-                  >
-                    <span className={`text-sm ${isToday ? 'text-white' : 'text-neutral-700'}`}>{day}</span>
-                    
-                    {/* Adherence Indicator (Background Gamification) */}
-                    {!isToday && adherence === 'full' && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                            <Check className="w-8 h-8 text-success-main" />
-                        </div>
-                    )}
-                    {!isToday && adherence === 'partial' && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                            <AlertCircle className="w-8 h-8 text-warning-main" />
-                        </div>
-                    )}
-                    {!isToday && adherence === 'missed' && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                            <X className="w-8 h-8 text-error-main" />
-                        </div>
-                    )}
-
-
-                    {/* Appointment Dots (Foreground) */}
-                    {hasAppointments && (
-                      <div className="absolute bottom-1 flex gap-0.5">
-                        {getAppointmentsForDate(date).slice(0, 3).map((apt, idx) => (
-                          <div key={idx} className={`w-1.5 h-1.5 rounded-full ${getTypeColor(apt.type)}`} />
-                        ))}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Selected date appointments */}
-            {selectedDate && getAppointmentsForDate(selectedDate).length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-6 pt-6 border-t border-neutral-200"
-              >
-                <h3 className="font-semibold text-neutral-700 mb-3">
-                  {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                </h3>
-                <div className="space-y-2">
-                  {getAppointmentsForDate(selectedDate).map(apt => (
-                    <div key={apt.id} className="p-3 bg-neutral-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-neutral-700">{getTypeLabel(apt.type)}</span>
-                      </div>
-                      <p className="text-sm text-neutral-600">{apt.title} • {apt.time}</p>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </div>
-        </section>
+          </motion.div>
+        )}
       </div>
+
+      <AnimatePresence>
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+              <h3 className="text-2xl font-bold mb-6">Add Event</h3>
+              <div className="space-y-4">
+                <input type="text" placeholder="Event Name (e.g. Fasting)" value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} className="w-full px-4 py-4 bg-neutral-50 rounded-2xl outline-none text-lg border-2 border-transparent focus:border-healing-sage-500" />
+                <select value={newEvent.type} onChange={e => setNewEvent({...newEvent, type: e.target.value})} className="w-full px-4 py-4 bg-neutral-50 rounded-2xl outline-none font-bold text-neutral-600">
+                  <option value="custom">General Event</option>
+                  <option value="test">Medical Test</option>
+                  <option value="doctor">Doctor Visit</option>
+                  <option value="refill">Refill Date</option>
+                </select>
+                <div className="flex gap-3 mt-6">
+                  <button onClick={() => setShowAddModal(false)} className="flex-1 py-4 rounded-2xl font-bold bg-neutral-100 text-neutral-500">Cancel</button>
+                  <button onClick={handleAddEvent} className="flex-1 py-4 rounded-2xl font-bold bg-healing-sage-500 text-white shadow-lg">Add</button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

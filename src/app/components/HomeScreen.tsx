@@ -1,12 +1,6 @@
 import { ChevronRight, Pill, Calendar, Clock, MessageSquare, Users, BarChart3, MoreVertical, Settings, UserPlus, HeartHandshake } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState } from 'react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu";
 import SplitText from "@/app/components/ui/SplitText";
 import PillNav from "@/app/components/ui/PillNav";
 import AnimatedList from "@/app/components/ui/AnimatedList";
@@ -18,6 +12,7 @@ interface Medication {
   dosage: string;
   time: string;
   taken: boolean;
+  description?: string;
 }
 
 interface HomeScreenProps {
@@ -83,11 +78,10 @@ export function HomeScreen({
     },
   ];
 
-  // Config for CardNav
   const cardNavItems = [
     {
       label: "Permissions",
-      bgColor: "#0f766e", // Teal
+      bgColor: "#0f766e",
       textColor: "#fff",
       links: [
         { label: "CareGiver Permission", onClick: () => onNavigate('caregiver-permission') },
@@ -96,7 +90,7 @@ export function HomeScreen({
     },
     {
       label: "Account",
-      bgColor: "#111827", // Gray 900
+      bgColor: "#111827",
       textColor: "#fff",
       links: [
         { label: "Settings", onClick: () => onNavigate('settings') },
@@ -105,7 +99,7 @@ export function HomeScreen({
     },
     {
       label: "Support",
-      bgColor: "#4b5563", // Gray 600
+      bgColor: "#4b5563",
       textColor: "#fff",
       links: [
         { label: "Help Center", onClick: () => onNavigate('help-center') },
@@ -116,22 +110,17 @@ export function HomeScreen({
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-24">
-      {/* Header */}
       <div className="bg-healing-sage-500 text-white p-6 pb-8 rounded-b-3xl shadow-lg relative">
         <div className="flex items-center justify-between mb-6">
-          {/* Invisible spacer for centering */}
           <div className="w-8" />
-          
           <SplitText 
             text="CareFlow"
             className="text-3xl font-bold text-center"
             delay={50}
             duration={1.25}
-            ease="circOut"
             from={{ opacity: 0, y: 40 }}
             to={{ opacity: 1, y: 0 }}
           />
-          
           <CardNav 
             items={cardNavItems}
             buttonBgColor="transparent"
@@ -139,7 +128,6 @@ export function HomeScreen({
           />
         </div>
 
-        {/* Navigation Pills (Visual Switcher) */}
         <div className="flex justify-center mb-6">
             <PillNav
                 items={[
@@ -152,122 +140,96 @@ export function HomeScreen({
                 pillColor="#ffffff"
                 pillTextColor="#0f766e"
                 hoveredPillTextColor="#ffffff"
-                className="scale-110" // Make larger as requested
+                className="scale-110"
             />
         </div>
         
-        {/* Greeting Box */}
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-inner">
-           <h2 className="text-2xl font-semibold text-white mb-1">Good Morning, {userName}!</h2>
-           <p className="text-healing-sage-100 text-lg">Hope you're feeling wonderful today. 🌿</p>
+           <h2 className="text-2xl font-semibold text-white mb-1">Good Day, {userName}!</h2>
+           <p className="text-healing-sage-100 text-lg">You have {todayMedications.length} items left for today. 🌿</p>
         </div>
       </div>
 
       <AnimatePresence mode="wait">
         {activeTab === 'main' ? (
-          <motion.div
-            key="main"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            {/* Today's Medication Section */}
+          <motion.div key="main" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
             <div className="px-6 -mt-6 relative z-10">
-              <motion.div 
-                className="bg-white rounded-2xl shadow-md p-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
+              <motion.div className="bg-white rounded-2xl shadow-md p-6">
                 <h2 className="text-2xl font-bold text-neutral-700 mb-4">Today's Medication</h2>
                 
                 {todayMedications.length === 0 ? (
-                  <p className="text-neutral-500 text-center py-4">No medications scheduled for today</p>
+                  <p className="text-neutral-500 text-center py-4">All done for today! 🎉</p>
                 ) : (
                   <div className="flex overflow-x-auto gap-4 pb-4 snap-x -mx-2 px-2">
-                    {todayMedications.map((med, index) => (
-                      <motion.div
-                        key={med.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className={`min-w-[280px] snap-center flex-shrink-0 flex flex-col justify-between p-5 rounded-xl border-2 shadow-sm ${
-                          med.taken 
-                            ? 'bg-success-light border-success-main' 
-                            : 'bg-neutral-50 border-neutral-200'
-                        }`}
-                      >
-                        <div className="mb-4">
-                          <h3 className="font-semibold text-neutral-700 text-lg mb-1">{med.name}</h3>
-                          <p className="text-neutral-600 font-medium">{med.time}</p>
-                          <p className="text-neutral-500 text-sm">{med.dosage}</p>
-                        </div>
-                        
-                        {!med.taken ? (
+                    <AnimatePresence mode="popLayout">
+                      {todayMedications.map((med) => (
+                        <motion.div
+                          key={med.id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, x: -100, scale: 0.5 }}
+                          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                          className="min-w-[280px] snap-center flex-shrink-0 flex flex-col justify-between p-5 rounded-xl border-2 shadow-sm bg-neutral-50 border-neutral-200"
+                        >
+                          <div className="mb-4">
+                            <h3 className="font-semibold text-neutral-700 text-lg mb-1">{med.name}</h3>
+                            <p className="text-neutral-600 font-medium">{med.time}</p>
+                            <p className="text-neutral-500 text-sm">{med.dosage}</p>
+                            {med.description && <p className="text-xs text-neutral-400 mt-2 italic">"{med.description}"</p>}
+                          </div>
+                          
                           <button
                             onClick={() => onMarkTaken(med.id)}
-                            className="w-full py-2 bg-healing-sage-500 text-white rounded-lg hover:bg-healing-sage-600 transition-colors font-medium"
+                            className="w-full py-3 bg-healing-sage-500 text-white rounded-lg hover:bg-healing-sage-600 transition-all font-bold text-lg active:scale-95 shadow-sm"
                           >
-                            Take Now
+                            Take
                           </button>
-                        ) : (
-                          <div className="w-full py-2 flex items-center justify-center gap-2 text-success-dark font-medium bg-white/50 rounded-lg">
-                            <span>✓ Taken</span>
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
                 )}
               </motion.div>
             </div>
 
-            {/* Menu List */}
             <div className="px-6 mt-6">
               <AnimatedList
                   items={menuItems}
                   onItemSelect={(item) => onNavigate(item.id)}
-                  renderItem={(item, index) => {
-                      const Icon = item.icon;
-                      return (
-                          <div className="flex items-center gap-4 p-5 hover:bg-neutral-50 transition-colors">
-                              <div className={`w-12 h-12 rounded-full ${item.color} flex items-center justify-center flex-shrink-0`}>
-                                  <Icon className="w-6 h-6" />
-                              </div>
-                              
-                              <div className="flex-1 text-left">
-                                  <div className="flex items-center gap-2">
-                                      <h3 className="font-semibold text-neutral-700">{item.label}</h3>
-                                      {item.hasAlert && (
-                                          <div className="w-2 h-2 bg-error-main rounded-full animate-pulse" />
-                                      )}
-                                  </div>
-                                  <p className="text-neutral-500 text-sm">{item.description}</p>
-                              </div>
-                              
-                              <ChevronRight className="w-5 h-5 text-neutral-400 flex-shrink-0" />
+                  renderItem={(item) => (
+                      <div className="flex items-center gap-4 p-5 hover:bg-neutral-50 transition-colors">
+                          <div className={`w-12 h-12 rounded-full ${item.color} flex items-center justify-center flex-shrink-0`}>
+                              <item.icon className="w-6 h-6" />
                           </div>
-                      );
-                  }}
+                          <div className="flex-1 text-left">
+                              <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold text-neutral-700">{item.label}</h3>
+                                  {item.hasAlert && <div className="w-2 h-2 bg-error-main rounded-full animate-pulse" />}
+                              </div>
+                              <p className="text-neutral-500 text-sm">{item.description}</p>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-neutral-400 flex-shrink-0" />
+                      </div>
+                  )}
               />
             </div>
           </motion.div>
         ) : (
-          <motion.div
-             key="hub"
-             initial={{ opacity: 0, y: 20 }}
-             animate={{ opacity: 1, y: 0 }}
-             exit={{ opacity: 0, y: -20 }}
-             className="p-6 pt-10 text-center"
-          >
+          <motion.div key="hub" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="p-6 pt-10">
              <div className="w-20 h-20 bg-healing-sage-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <HeartHandshake className="w-10 h-10 text-healing-sage-600" />
              </div>
              <h2 className="text-2xl font-bold text-neutral-700 mb-2">CareGiver Hub</h2>
-             <p className="text-neutral-600">
-               Connect with your family and doctors here. <br/>
-               (Upcoming features will appear here)
-             </p>
+             <p className="text-neutral-600 mb-6">Manage your family's health from one place.</p>
+             
+             <button 
+               onClick={() => onNavigate('caregiver-hub')}
+               className="w-full bg-healing-sage-500 text-white rounded-2xl shadow-lg p-5 flex items-center justify-center gap-3 hover:bg-healing-sage-600 transition-all font-bold text-xl active:scale-95"
+             >
+               <HeartHandshake className="w-7 h-7" />
+               Open CareGiver Hub
+             </button>
           </motion.div>
         )}
       </AnimatePresence>

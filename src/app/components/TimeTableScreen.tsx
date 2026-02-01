@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { ArrowLeft, Clock, GripVertical, X } from 'lucide-react';
+import { ArrowLeft, Clock, Save, Edit3, Coffee, Sun, Moon, Utensils } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { toast } from 'sonner';
 
 interface MedicationSchedule {
@@ -11,241 +9,260 @@ interface MedicationSchedule {
   dosage: string;
   time: string;
   hour: number;
+  schedule: string[];
 }
 
 interface TimeTableScreenProps {
   onBack: () => void;
   medications: MedicationSchedule[];
-  onUpdateSchedule: (id: string, time: string, days: string[]) => void;
+  onUpdateSchedule: (id: string, hour: number, days: string[], description?: string) => void;
 }
 
+const TIMING_DESCRIPTIONS = [
+  { id: 'breakfast', label: 'Breakfast', icon: Utensils, time: 8, description: 'With your morning meal' },
+  { id: 'morning-coffee', label: 'Morning Coffee', icon: Coffee, time: 9, description: 'While enjoying coffee' },
+  { id: 'lunch', label: 'Lunch', icon: Utensils, time: 12, description: 'With your lunch' },
+  { id: 'afternoon', label: 'Afternoon', icon: Sun, time: 15, description: 'Mid-afternoon break' },
+  { id: 'dinner', label: 'Dinner', icon: Utensils, time: 18, description: 'With your evening meal' },
+  { id: 'bedtime', label: 'Bedtime', icon: Moon, time: 22, description: 'Before going to sleep' },
+];
+
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const ItemTypes = {
-  MEDICINE: 'medicine',
-};
-
-// Draggable Medicine Component
-const DraggableMedicine = ({ med }: { med: MedicationSchedule }) => {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: ItemTypes.MEDICINE,
-    item: { id: med.id, name: med.name },
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  }));
-
-  return (
-    <div
-      ref={drag}
-      className={`p-3 bg-white border-2 border-healing-sage-200 rounded-xl shadow-sm flex items-center gap-2 cursor-grab active:cursor-grabbing ${
-        isDragging ? 'opacity-50' : 'opacity-100'
-      }`}
-    >
-      <GripVertical className="w-5 h-5 text-neutral-400" />
-      <div>
-        <p className="font-medium text-neutral-700">{med.name}</p>
-        <p className="text-xs text-neutral-500">{med.dosage}</p>
-      </div>
-    </div>
-  );
-};
-
-// Drop Zone Component (Day)
-const DayColumn = ({ day, scheduledMeds, onDrop, onRemove }: { 
-  day: string; 
-  scheduledMeds: { id: string; name: string }[]; 
-  onDrop: (item: { id: string; name: string }) => void;
-  onRemove: (medId: string) => void;
-}) => {
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: ItemTypes.MEDICINE,
-    drop: (item: { id: string; name: string }) => onDrop(item),
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  }));
-
-  return (
-    <div
-      ref={drop}
-      className={`min-w-[120px] rounded-xl p-3 flex flex-col gap-2 transition-colors ${
-        isOver ? 'bg-healing-sage-100 border-2 border-healing-sage-300' : 'bg-neutral-100 border-2 border-transparent'
-      }`}
-    >
-      <h3 className="font-bold text-neutral-600 text-center mb-2">{day}</h3>
-      <div className="space-y-2 min-h-[100px]">
-        {scheduledMeds.map((med, idx) => (
-          <div key={`${med.id}-${idx}`} className="bg-white p-2 rounded-lg shadow-sm text-sm relative group">
-            <span className="font-medium text-neutral-700">{med.name}</span>
-            <button 
-              onClick={() => onRemove(med.id)}
-              className="absolute right-1 top-1 text-neutral-400 hover:text-error-main opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-        {scheduledMeds.length === 0 && (
-          <p className="text-xs text-neutral-400 text-center mt-4">Drop here</p>
-        )}
-      </div>
-    </div>
-  );
-};
 
 export function TimeTableScreen({ onBack, medications, onUpdateSchedule }: TimeTableScreenProps) {
-  const [selectedView, setSelectedView] = useState<'day' | 'week'>('day');
-  // Week Schedule State: { "Mon": [{id, name}], ... }
-  const [weekSchedule, setWeekSchedule] = useState<{ [key: string]: { id: string; name: string }[] }>({});
+  const [editingMed, setEditingMed] = useState<MedicationSchedule | null>(null);
+  const [selectedTiming, setSelectedTiming] = useState(TIMING_DESCRIPTIONS[0]);
+  const [selectedDays, setSelectedDays] = useState<string[]>(DAYS);
+  const [customTime, setCustomTime] = useState(8);
+  const [useCustomTime, setUseCustomTime] = useState(false);
 
-  const handleDayDrop = (day: string, item: { id: string; name: string }) => {
-    setWeekSchedule(prev => {
-      const current = prev[day] || [];
-      // Prevent duplicates if needed, or allow multiple doses
-      if (current.find(m => m.id === item.id)) return prev; 
-      return { ...prev, [day]: [...current, item] };
-    });
-    toast.success(`Scheduled ${item.name} for ${day}`);
+  const handleSave = () => {
+    if (editingMed) {
+      const hour = useCustomTime ? customTime : selectedTiming.time;
+      const description = useCustomTime ? `At ${hour}:00` : selectedTiming.description;
+      onUpdateSchedule(editingMed.id, hour, selectedDays, description);
+      setEditingMed(null);
+      setUseCustomTime(false);
+      toast.success('Schedule updated successfully');
+    }
   };
 
-  const handleRemoveFromDay = (day: string, medId: string) => {
-    setWeekSchedule(prev => ({
-      ...prev,
-      [day]: (prev[day] || []).filter(m => m.id !== medId)
-    }));
+  const toggleDay = (day: string) => {
+    setSelectedDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day]
+    );
   };
 
-  // Logic for horizontal time update
-  const handleTimeChange = (medId: string, newHour: number) => {
-    // Determine AM/PM
-    const ampm = newHour >= 12 ? 'PM' : 'AM';
-    const hour12 = newHour % 12 || 12;
-    const timeString = `${hour12}:00 ${ampm}`;
+  const startEditing = (med: MedicationSchedule) => {
+    setEditingMed(med);
+    setSelectedDays(med.schedule.length > 0 ? med.schedule : DAYS);
     
-    // In a real app, this would bubble up. For now we just toast.
-    // onUpdateSchedule(medId, timeString, []); 
-    toast.success(`Rescheduled to ${timeString}`);
+    // Find matching timing or use custom
+    const matchingTiming = TIMING_DESCRIPTIONS.find(t => t.time === med.hour);
+    if (matchingTiming) {
+      setSelectedTiming(matchingTiming);
+      setUseCustomTime(false);
+    } else {
+      setCustomTime(med.hour);
+      setUseCustomTime(true);
+    }
   };
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="min-h-screen bg-neutral-50 pb-24">
-        {/* Header */}
-        <div className="bg-healing-sage-500 text-white p-6 sticky top-0 z-10 shadow-md">
-          <button onClick={onBack} className="flex items-center gap-2 mb-4">
-            <ArrowLeft className="w-6 h-6" />
-            <span className="text-lg">Back</span>
-          </button>
-          <h1 className="text-3xl font-bold">Time Table</h1>
-          <p className="text-healing-sage-100">Schedule your medications</p>
-        </div>
+    <div className="min-h-screen bg-neutral-50 pb-24">
+      <div className="bg-healing-sage-500 text-white p-6 sticky top-0 z-10 shadow-md">
+        <button onClick={onBack} className="flex items-center gap-2 mb-4">
+          <ArrowLeft className="w-6 h-6" />
+          <span className="text-lg">Back</span>
+        </button>
+        <h1 className="text-3xl font-bold font-secondary text-center">Medication Timeline</h1>
+      </div>
 
-        {/* View Toggle */}
-        <div className="p-6">
-          <div className="bg-white rounded-2xl shadow-md p-2 flex gap-2 mb-6">
-            <button
-              onClick={() => setSelectedView('day')}
-              className={`flex-1 py-3 rounded-xl font-medium transition-colors ${
-                selectedView === 'day'
-                  ? 'bg-healing-sage-500 text-white'
-                  : 'text-neutral-600 hover:bg-neutral-100'
-              }`}
-            >
-              Day View (Horizontal)
-            </button>
-            <button
-              onClick={() => setSelectedView('week')}
-              className={`flex-1 py-3 rounded-xl font-medium transition-colors ${
-                selectedView === 'week'
-                  ? 'bg-healing-sage-500 text-white'
-                  : 'text-neutral-600 hover:bg-neutral-100'
-              }`}
-            >
-              Week View (Drag & Drop)
-            </button>
-          </div>
-
-          {/* Day View - Horizontal Timeline */}
-          {selectedView === 'day' && (
-            <div className="bg-white rounded-2xl shadow-md p-6 overflow-hidden">
-              <h2 className="text-xl font-bold text-neutral-700 mb-6">Today's Timeline</h2>
-              <p className="text-sm text-neutral-500 mb-4">Scroll horizontally to see all hours. Click a medication to reschedule.</p>
-              
-              <div className="relative overflow-x-auto pb-6">
-                <div className="flex min-w-[1600px] border-b-2 border-neutral-200">
-                  {HOURS.map((hour) => (
-                    <div key={hour} className="w-20 flex-shrink-0 relative group">
-                      {/* Hour Label */}
-                      <div className="text-center text-xs text-neutral-500 font-medium py-2">
-                        {hour}:00
-                      </div>
-                      
-                      {/* Tick Mark */}
-                      <div className="h-4 w-0.5 bg-neutral-300 mx-auto" />
-                      
-                      {/* Slot Content */}
-                      <div className="h-32 border-l border-neutral-100 relative bg-neutral-50/50 group-hover:bg-neutral-100 transition-colors">
-                        {medications.filter(m => m.hour === hour).map(med => (
-                          <motion.button
-                            key={med.id}
-                            layoutId={med.id}
-                            onClick={() => {
-                                const newTime = prompt("Enter new hour (0-23):", hour.toString());
-                                if (newTime && !isNaN(parseInt(newTime))) {
-                                    handleTimeChange(med.id, parseInt(newTime));
-                                }
-                            }}
-                            className="absolute left-1 right-1 top-2 bg-healing-sage-500 text-white text-xs p-2 rounded shadow-sm z-10 hover:bg-healing-sage-600 text-left"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                          >
-                            <span className="font-bold block">{med.name}</span>
-                            {med.dosage}
-                          </motion.button>
+      <div className="p-6">
+        {/* Simple List View */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-neutral-700 mb-4">Your Medications</h2>
+          <div className="space-y-4">
+            {medications.map(med => (
+              <motion.div
+                key={med.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-white rounded-2xl shadow-md p-5 border border-neutral-50"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-neutral-800 text-lg mb-1">{med.name}</h3>
+                    <p className="text-neutral-600 font-medium">{med.dosage}</p>
+                    {med.schedule.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {med.schedule.map(day => (
+                          <span key={day} className="text-xs bg-healing-sage-100 text-healing-sage-700 px-2 py-1 rounded-full font-bold">
+                            {day}
+                          </span>
                         ))}
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                  <button
+                    onClick={() => startEditing(med)}
+                    className="px-4 py-2 bg-healing-sage-500 text-white rounded-xl font-bold text-sm hover:bg-healing-sage-600 transition-colors flex items-center gap-2"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    Edit Time
+                  </button>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
 
-          {/* Week View - Drag & Drop */}
-          {selectedView === 'week' && (
-            <div className="space-y-6">
-              {/* Source List */}
-              <div className="bg-white rounded-2xl shadow-md p-4">
-                <h3 className="font-bold text-neutral-700 mb-3">Medications</h3>
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  {medications.map(med => (
-                    <DraggableMedicine key={med.id} med={med} />
-                  ))}
-                  {medications.length === 0 && <p className="text-neutral-500 text-sm">No medications found.</p>}
-                </div>
-              </div>
-
-              {/* Target Days */}
-              <div className="bg-white rounded-2xl shadow-md p-4">
-                <h3 className="font-bold text-neutral-700 mb-4">Weekly Schedule</h3>
-                <div className="flex gap-3 overflow-x-auto pb-4 snap-x">
-                  {DAYS.map(day => (
-                    <div key={day} className="snap-center">
-                      <DayColumn 
-                        day={day} 
-                        scheduledMeds={weekSchedule[day] || []} 
-                        onDrop={(item) => handleDayDrop(day, item)}
-                        onRemove={(medId) => handleRemoveFromDay(day, medId)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+        {/* Quick Timing Templates */}
+        <div className="bg-white rounded-2xl shadow-md p-6 border border-neutral-50 mb-6">
+          <h3 className="text-xl font-bold text-neutral-700 mb-4">Quick Setup Templates</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {TIMING_DESCRIPTIONS.map(timing => {
+              const Icon = timing.icon;
+              return (
+                <button
+                  key={timing.id}
+                  onClick={() => {
+                    setSelectedTiming(timing);
+                    setUseCustomTime(false);
+                  }}
+                  className={`p-4 rounded-xl border-2 transition-all ${
+                    selectedTiming.id === timing.id && !useCustomTime
+                      ? 'border-healing-sage-500 bg-healing-sage-50'
+                      : 'border-neutral-200 hover:border-healing-sage-300'
+                  }`}
+                >
+                  <Icon className="w-6 h-6 text-healing-sage-600 mb-2 mx-auto" />
+                  <p className="font-bold text-neutral-800">{timing.label}</p>
+                  <p className="text-xs text-neutral-500 mt-1">{timing.description}</p>
+                  <p className="text-sm font-bold text-healing-sage-600 mt-2">{timing.time}:00</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </DndProvider>
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {editingMed && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+            >
+              <div className="p-6">
+                <h3 className="text-2xl font-bold mb-2">Schedule: {editingMed.name}</h3>
+                <p className="text-neutral-600 mb-6">{editingMed.dosage}</p>
+
+                {/* Timing Selection */}
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-neutral-700 mb-3">When to take:</label>
+                  
+                  <div className="space-y-3">
+                    {/* Custom Time Option */}
+                    <button
+                      onClick={() => setUseCustomTime(true)}
+                      className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                        useCustomTime
+                          ? 'border-healing-sage-500 bg-healing-sage-50'
+                          : 'border-neutral-200 hover:border-healing-sage-300'
+                      }`}
+                    >
+                      <p className="font-bold text-neutral-800">Custom Time</p>
+                      <input
+                        type="range"
+                        min="0"
+                        max="23"
+                        value={customTime}
+                        onChange={(e) => setCustomTime(parseInt(e.target.value))}
+                        className="w-full mt-2"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <p className="text-sm font-bold text-healing-sage-600 mt-1">{customTime}:00</p>
+                    </button>
+
+                    {/* Template Options */}
+                    {TIMING_DESCRIPTIONS.map(timing => {
+                      const Icon = timing.icon;
+                      return (
+                        <button
+                          key={timing.id}
+                          onClick={() => {
+                            setSelectedTiming(timing);
+                            setUseCustomTime(false);
+                          }}
+                          className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                            selectedTiming.id === timing.id && !useCustomTime
+                              ? 'border-healing-sage-500 bg-healing-sage-50'
+                              : 'border-neutral-200 hover:border-healing-sage-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon className="w-5 h-5 text-healing-sage-600 flex-shrink-0" />
+                            <div>
+                              <p className="font-bold text-neutral-800">{timing.label}</p>
+                              <p className="text-xs text-neutral-500">{timing.description}</p>
+                            </div>
+                            <span className="text-sm font-bold text-healing-sage-600 ml-auto">
+                              {timing.time}:00
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Days Selection */}
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-neutral-700 mb-3">Days of week:</label>
+                  <div className="grid grid-cols-7 gap-2">
+                    {DAYS.map(day => (
+                      <button
+                        key={day}
+                        onClick={() => toggleDay(day)}
+                        className={`py-3 rounded-lg text-xs font-bold transition-all ${
+                          selectedDays.includes(day)
+                            ? 'bg-healing-sage-500 text-white shadow-sm'
+                            : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setEditingMed(null)} 
+                    className="flex-1 py-4 rounded-2xl font-bold bg-neutral-100 text-neutral-500"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSave} 
+                    className="flex-1 py-4 rounded-2xl font-bold bg-healing-sage-500 text-white shadow-lg flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-5 h-5" />
+                    Save Schedule
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

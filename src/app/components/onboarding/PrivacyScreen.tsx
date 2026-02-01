@@ -1,179 +1,109 @@
+import { Bell, Camera, Clock, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
-import { PrimaryButton } from '@/app/components/PrimaryButton';
-import { Shield, Lock, Eye, Trash2, Bell, Camera, MapPin } from 'lucide-react';
 import { useState } from 'react';
-import { Switch } from '@/app/components/ui/switch';
-
-interface PrivacyScreenProps {
-  onContinue: (permissions: PermissionSettings) => void;
-}
 
 export interface PermissionSettings {
   notifications: boolean;
   camera: boolean;
-  location: boolean;
+  timeCheck: boolean;
+}
+
+interface PrivacyScreenProps {
+  onContinue: (permissions: PermissionSettings) => void;
 }
 
 export function PrivacyScreen({ onContinue }: PrivacyScreenProps) {
   const [permissions, setPermissions] = useState<PermissionSettings>({
     notifications: true,
     camera: true,
-    location: false,
+    timeCheck: true,
   });
 
-  const privacyPoints = [
-    { icon: <Lock className="w-5 h-5" />, text: 'Encrypted end-to-end' },
-    { icon: <Eye className="w-5 h-5" />, text: 'You control who sees what' },
-    { icon: <Shield className="w-5 h-5" />, text: 'No data selling, ever' },
-    { icon: <Trash2 className="w-5 h-5" />, text: 'Delete anytime' },
-  ];
-
-  const permissionOptions = [
-    {
-      key: 'notifications' as keyof PermissionSettings,
-      icon: <Bell className="w-6 h-6" />,
-      title: 'Notifications',
-      description: 'Get reminded when it\'s time to take your medication',
-      recommended: true,
-    },
-    {
-      key: 'camera' as keyof PermissionSettings,
-      icon: <Camera className="w-6 h-6" />,
-      title: 'Camera',
-      description: 'Take photos of your medications for easy identification',
-      recommended: true,
-    },
-    {
-      key: 'location' as keyof PermissionSettings,
-      icon: <MapPin className="w-6 h-6" />,
-      title: 'Location (Optional)',
-      description: 'Find nearby pharmacies and get refill reminders',
-      recommended: false,
-    },
-  ];
+  const togglePermission = (key: keyof PermissionSettings) => {
+    setPermissions(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col p-6 pb-32">
-      {/* Shield Illustration */}
-      <motion.div
-        className="flex justify-center mt-8 mb-6"
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 200 }}
+    <div className="min-h-screen bg-neutral-50 p-6 flex flex-col items-center justify-center">
+      <div className="w-20 h-20 bg-healing-sage-100 rounded-full flex items-center justify-center mb-8">
+        <ShieldCheck className="w-10 h-10 text-healing-sage-600" />
+      </div>
+
+      <h1 className="text-3xl font-bold text-neutral-800 text-center mb-4 font-secondary">Your Privacy</h1>
+      <p className="text-neutral-600 text-center mb-10 max-w-sm">
+        We need a few permissions to help you stay on track with your health routine.
+      </p>
+
+      <div className="w-full max-w-md space-y-4 mb-10">
+        <PermissionToggle
+          icon={Bell}
+          title="Notifications"
+          description="To remind you when it's time for your medication"
+          isEnabled={permissions.notifications}
+          onToggle={() => togglePermission('notifications')}
+        />
+        <PermissionToggle
+          icon={Camera}
+          title="Camera & Gallery"
+          description="To scan prescriptions and set your profile picture"
+          isEnabled={permissions.camera}
+          onToggle={() => togglePermission('camera')}
+        />
+        <PermissionToggle
+          icon={Clock}
+          title="Time Check"
+          description="To sync with your local time for accurate reminders"
+          isEnabled={permissions.timeCheck}
+          onToggle={() => togglePermission('timeCheck')}
+        />
+      </div>
+
+      <button
+        onClick={() => onContinue(permissions)}
+        className="w-full max-w-md py-4 bg-healing-sage-500 text-white rounded-2xl font-bold text-lg hover:bg-healing-sage-600 transition-all shadow-md active:scale-95"
       >
-        <div className="w-24 h-24 bg-gradient-to-br from-healing-sage-400 to-healing-sage-600 rounded-[24px] flex items-center justify-center shadow-lg">
-          <Shield className="w-12 h-12 text-white" />
+        Continue
+      </button>
+    </div>
+  );
+}
+
+function PermissionToggle({ 
+  icon: Icon, 
+  title, 
+  description, 
+  isEnabled, 
+  onToggle 
+}: { 
+  icon: any, 
+  title: string, 
+  description: string, 
+  isEnabled: boolean, 
+  onToggle: () => void 
+}) {
+  return (
+    <div className="bg-white p-5 rounded-2xl shadow-sm flex items-center justify-between gap-4 border border-neutral-100">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-neutral-100 rounded-xl flex items-center justify-center flex-shrink-0">
+          <Icon className="w-6 h-6 text-neutral-600" />
         </div>
-      </motion.div>
-
-      {/* Header */}
-      <motion.div
-        className="text-center mb-8"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <h1 className="text-3xl font-bold text-neutral-700 mb-2">
-          Your health data stays yours
-        </h1>
-        <p className="text-neutral-600">
-          Privacy and security built in from day one
-        </p>
-      </motion.div>
-
-      {/* Privacy Points */}
-      <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8 max-w-2xl mx-auto w-full"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        {privacyPoints.map((point, index) => (
-          <motion.div
-            key={index}
-            className="flex items-center gap-3 p-4 bg-white rounded-xl border border-neutral-200"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 + index * 0.05 }}
-          >
-            <div className="text-healing-sage-600">
-              {point.icon}
-            </div>
-            <span className="text-sm text-neutral-700 font-medium">
-              {point.text}
-            </span>
-          </motion.div>
-        ))}
-      </motion.div>
-
-      {/* Permissions Section */}
-      <motion.div
-        className="max-w-2xl mx-auto w-full mb-6"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <h2 className="text-xl font-semibold text-neutral-700 mb-4">
-          Permissions Needed
-        </h2>
-        
-        <div className="space-y-3">
-          {permissionOptions.map((option, index) => (
-            <motion.div
-              key={option.key}
-              className="bg-white rounded-xl border border-neutral-200 p-5"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-healing-sage-100 rounded-xl flex items-center justify-center text-healing-sage-600">
-                  {option.icon}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-base font-semibold text-neutral-700">
-                      {option.title}
-                    </h3>
-                    {option.recommended && (
-                      <span className="text-xs bg-success-light text-success-dark px-2 py-0.5 rounded-full font-medium">
-                        Recommended
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-neutral-600 leading-relaxed">
-                    {option.description}
-                  </p>
-                </div>
-
-                <Switch
-                  checked={permissions[option.key]}
-                  onCheckedChange={(checked) =>
-                    setPermissions({ ...permissions, [option.key]: checked })
-                  }
-                  className="flex-shrink-0"
-                />
-              </div>
-            </motion.div>
-          ))}
+        <div>
+          <h3 className="font-bold text-neutral-800">{title}</h3>
+          <p className="text-sm text-neutral-500 leading-tight">{description}</p>
         </div>
-      </motion.div>
-
-      {/* Continue Button */}
-      <motion.div
-        className="fixed bottom-6 left-6 right-6 max-w-2xl mx-auto"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
+      </div>
+      
+      <button
+        onClick={onToggle}
+        className={`w-14 h-8 rounded-full transition-colors relative flex-shrink-0 ${
+          isEnabled ? 'bg-healing-sage-500' : 'bg-neutral-200'
+        }`}
       >
-        <PrimaryButton
-          onClick={() => onContinue(permissions)}
-          fullWidth
-        >
-          Continue
-        </PrimaryButton>
-      </motion.div>
+        <motion.div
+          animate={{ x: isEnabled ? 26 : 4 }}
+          className="absolute top-1 left-0 w-6 h-6 bg-white rounded-full shadow-sm"
+        />
+      </button>
     </div>
   );
 }
